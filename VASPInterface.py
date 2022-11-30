@@ -185,8 +185,8 @@ class VASPRunner:
             self.create_incar(run_type, vdw_type, scan, ENMAX, POTIM, NSW, TEBEG, TEEND, EDIFFG, NCORE)
 
     def create_kpoint(self):
-        kpointfile = open("%s/KPOINT"%(self.output_dir), "w")
-        kpointfile.write('''K-Points\n0\nMonkhorst\n 1  1  1\n 0  0  0\n''')
+        kpointfile = open("%s/KPOINTS"%(self.output_dir), "w")
+        kpointfile.write('''K-Points\n 0\nMonkhorst\n 1  1  1\n 0  0  0\n''')
         kpointfile.close()
 
     def create_poscar(self, atom_position, lattice_vector, element, atom_name, atom_num, system_name, coord_type):
