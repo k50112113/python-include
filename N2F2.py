@@ -28,6 +28,7 @@ class N2F2:
         self.input_filename = input_filename
         self.read_input_file()
 
+        ###################################### Load basic information ######################################
         print(self.settings_["mode"])
         self.output_dir = self.settings_["output_dir"]
         self.output_log = self.settings_["output_log"]
@@ -43,7 +44,8 @@ class N2F2:
         self.test_ratio                     = float(self.settings_["test_ratio"])
         self.atomic_subnetwork_map_         = {} # (i_globaltype, j_bootstrap) -> atomic subnetwork
         self.bp_descriptor_                 = None
-        
+        ###################################### Load basic information ######################################
+
         self.timer = Clock()
 
         if self.settings_["mode"] == "train": self.init_training()
@@ -51,11 +53,48 @@ class N2F2:
 
         ###################################### Load DFT trajectories ######################################
         print("Loading trajectories...")
-        self.training_data_dir_list_        = self.settings_["training_data_dir_list"].strip().split()
+        self.training_data_dir_list_ = self.settings_["training_data_dir_list"].strip().split(',')
         start_frame = self.settings_.get("start_frame")
-        start_frame = 0 if start_frame is None else int(start_frame)
         number_of_frames = self.settings_.get("number_of_frames")
-        number_of_frames = -1 if number_of_frames is None else int(number_of_frames)
+        for training_index in range(len(self.training_data_dir_list_)): self.training_data_dir_list_[training_index] = self.training_data_dir_list_[training_index].strip().split()
+        if start_frame is None:
+            start_frame = [[0]*len(i) for i in self.training_data_dir_list_]
+        elif " " not in start_frame.strip() and "," not in start_frame.strip():
+            try:
+                start_frame = int(start_frame)
+                start_frame = [[start_frame]*len(i) for i in self.training_data_dir_list_]
+            except:
+                print("Error: start_frame format not recongnized")
+                exit()
+        else:
+            try:
+                start_frame = start_frame.strip().split(',')
+                for training_index in range(len(self.training_data_dir_list_)): start_frame[training_index] = [int(i) for i in start_frame[training_index].strip().split()]
+                if len(start_frame) != len(self.training_data_dir_list_): raise Exception()
+                for training_index in range(len(self.training_data_dir_list_)):
+                    if len(start_frame[training_index]) != len(self.training_data_dir_list_[training_index]): raise Exception()
+            except:
+                print("Error: start_frame should be either one single integer or should have the same data size as training_data_dir_list")     
+                exit()
+        if number_of_frames is None:
+            number_of_frames = [[-1]*len(i) for i in self.training_data_dir_list_]
+        elif " " not in number_of_frames.strip() and "," not in number_of_frames.strip():
+            try:
+                number_of_frames = int(number_of_frames)
+                number_of_frames = [[number_of_frames]*len(i) for i in self.training_data_dir_list_]
+            except:
+                print("Error: number_of_frames format not recongnized")
+                exit()
+        else:
+            try:
+                number_of_frames = number_of_frames.strip().split(',')
+                for training_index in range(len(self.training_data_dir_list_)): number_of_frames[training_index] = [int(i) for i in number_of_frames[training_index].strip().split()]
+                if len(number_of_frames) != len(self.training_data_dir_list_): raise Exception()
+                for training_index in range(len(self.training_data_dir_list_)):
+                    if len(number_of_frames[training_index]) != len(self.training_data_dir_list_[training_index]): raise Exception()
+            except:
+                print("Error: number_of_frames should be either one single integer or should have the same data size as training_data_dir_list")     
+                exit()
         self.load_training_data(start_frame = start_frame, number_of_frames = number_of_frames)
         print("Complete %.3f s\n"%(self.timer.get_dt()))
         ###################################### Load DFT trajectories ######################################
@@ -129,9 +168,8 @@ class N2F2:
         self.test_loader = []
         self.dft_trajectory_list = []
         self.globaltype_list = []
-        for training_data_dir in self.training_data_dir_list_:
-            print("\tReading %s frames, starting from frame %s"%(number_of_frames, start_frame))
-            dft_trajectory = DFTTrajectory(input_dir = training_data_dir, start_frame = start_frame, number_of_frames = number_of_frames)
+        for training_index, training_data_dir in enumerate(self.training_data_dir_list_):
+            dft_trajectory = DFTTrajectory(input_dir = training_data_dir, start_frame = start_frame[training_index], number_of_frames = number_of_frames[training_index])
             dataset = TrajectoryDataset(dft_trajectory.atom_position_, dft_trajectory.lattice_vector_, dft_trajectory.inverse_lattice_vector_, dft_trajectory.energy_.unsqueeze(-1), dft_trajectory.atom_force_, self.device)
             self.globaltype_list += dft_trajectory.type_list_
             total_n_test_sample        = int(self.test_ratio*dft_trajectory.number_of_frames_)
@@ -186,6 +224,7 @@ class N2F2:
                 self.settings_["hidden_layer_size"] = self.settings_["hidden_layer_size"]*self.number_of_globaltypes_
             elif len(self.settings_["hidden_layer_size"]) != self.number_of_globaltypes_:
                 print("Error: the number of hidden layer sizes should be either 1 or the total number of types.")
+                exit()
             self.hidden_layer_size_ = [[int(i_layer) for i_layer in i_hidden_layer_size.strip().split()] for i_hidden_layer_size in self.settings_["hidden_layer_size"]]
             print("\tActivation function: %s"%(activation_type))
         else:
@@ -395,6 +434,7 @@ class N2F2:
             fin.close()
         except:
             print("Error: %s not found or not readable."%(self.model_dir+"/bp_descriptor.save"))
+            exit()
             
     def save_atomic_subnetworks(self):
         print("Saving Atomic Sub-networks...")

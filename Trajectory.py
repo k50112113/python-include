@@ -15,49 +15,58 @@ class TrajectoryDataset(torch.utils.data.Dataset):
         return self.atom_position_[index], self.lattice_vector_[index], self.inverse_lattice_vector_[index], self.energy_[index], self.atom_force_[index]
 
 class DFTTrajectory:
-    def __init__(self, input_dir = ".", start_frame = 0, number_of_frames = -1):
-        print("\tLoading trajectories from \"%s/\" ..."%(input_dir))
+    def __init__(self, input_dir = ["."], start_frame = [0], number_of_frames = [-1]):
+        print("\tLoading trajectories from %s ..."%(input_dir))
         atom_position = []
-        with open(input_dir + "/coord.raw") as fin:
-            for i_line, aline in enumerate(fin):
-                if i_line >= start_frame:
-                    linelist = aline.strip().split()
-                    atom_position.append([float(i) for i in linelist])
-                    if number_of_frames > -1 and len(atom_position) == number_of_frames: break
+        for index, i_input_dir in enumerate(input_dir):
+            with open(i_input_dir + "/coord.raw") as fin:
+                i_line_read = 0
+                for i_line, aline in enumerate(fin):
+                    if i_line >= start_frame[index]:
+                        linelist = aline.strip().split()
+                        atom_position.append([float(i) for i in linelist])
+                        i_line_read += 1
+                        if number_of_frames[index] > -1 and i_line_read == number_of_frames[index]: break
         self.number_of_frames_ = len(atom_position)
         self.number_of_atoms_ = len(atom_position[0])//3
         self.atom_position_ = torch.reshape(torch.tensor(atom_position), (-1,self.number_of_atoms_,3))
         
         atom_force = []
-        with open(input_dir + "/force.raw") as fin:
-            for i_line, aline in enumerate(fin):
-                if i_line >= start_frame:
-                    linelist = aline.strip().split()
-                    atom_force.append([float(i) for i in linelist])
-                    if number_of_frames > -1 and len(atom_force) == number_of_frames: break
+        for index, i_input_dir in enumerate(input_dir):
+            with open(i_input_dir + "/force.raw") as fin:
+                i_line_read = 0
+                for i_line, aline in enumerate(fin):
+                    if i_line >= start_frame[index]:
+                        linelist = aline.strip().split()
+                        atom_force.append([float(i) for i in linelist])
+                        if number_of_frames[index] > -1 and i_line_read == number_of_frames[index]: break
         self.atom_force_ = torch.reshape(torch.tensor(atom_force), (-1,self.number_of_atoms_,3))
         
         lattice_vector = []
-        with open(input_dir + "/box.raw") as fin:
-            for i_line, aline in enumerate(fin):
-                if i_line >= start_frame:
-                    linelist = aline.strip().split()
-                    lattice_vector.append([float(i) for i in linelist])
-                    if number_of_frames > -1 and len(lattice_vector) == self.number_of_frames_: break
+        for index, i_input_dir in enumerate(input_dir):
+            with open(i_input_dir + "/box.raw") as fin:
+                i_line_read = 0
+                for i_line, aline in enumerate(fin):
+                    if i_line >= start_frame[index]:
+                        linelist = aline.strip().split()
+                        lattice_vector.append([float(i) for i in linelist])
+                        if number_of_frames[index] > -1 and i_line_read == number_of_frames[index]: break
         self.lbox_rect_ = torch.index_select(torch.reshape(torch.tensor(lattice_vector), (-1,9)), 1, torch.tensor([0,4,8]))
         self.lattice_vector_ = torch.tensor(lattice_vector).reshape((-1,3,3)).transpose(-2, -1)
         self.inverse_lattice_vector_ = self.lattice_vector_.inverse()
         
         energy = []
-        with open(input_dir + "/energy.raw") as fin:
-            for i_line, aline in enumerate(fin):
-                if i_line >= start_frame:
-                    energy.append(float(aline.strip()))
-                    if number_of_frames > -1 and len(energy) == self.number_of_frames_: break
+        for index, i_input_dir in enumerate(input_dir):
+            with open(i_input_dir + "/energy.raw") as fin:
+                i_line_read = 0
+                for i_line, aline in enumerate(fin):
+                    if i_line >= start_frame[index]:
+                        energy.append(float(aline.strip()))
+                        if number_of_frames[index] > -1 and i_line_read == number_of_frames[index]: break
         self.energy_ = torch.tensor(energy)  
 
         atom_type = []
-        with open(input_dir + "/type.raw") as fin:
+        with open(input_dir[0] + "/type.raw") as fin:
             linelist = fin.readline().strip().split()
             atom_type = [int(i) for i in linelist]
         self.atom_type_ = torch.tensor(atom_type, dtype=torch.uint8)
@@ -70,7 +79,7 @@ class DFTTrajectory:
 
         self.atom_mass_ = torch.zeros(len(self.atom_type_))
         self.atom_name_list_ = {}
-        with open(input_dir + "/atom.raw") as fin:
+        with open(input_dir[0] + "/atom.raw") as fin:
             for aline in fin:
                 linelist = aline.strip().split()
                 this_type = int(linelist[0])
