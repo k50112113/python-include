@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.optimize import leastsq
 import ReadMD as RM
 
 def smooth(x, y, n_points = 1000, sg_filter = True, sg_window = 101):
@@ -142,87 +141,94 @@ def make_molecule_file(output_filename, atom_type, molecule_name, n_atom_in_mole
                 fout.write("%d %s\n"%(molecule_id, molecule_name[j]))
             i += n_atom_in_molecule[j]
 
-def read(filename,quantity="",target_k=0,target_k_index=-1):
-    
+def read(filename, target_k_index = -1, target_k = 0):
+    #note: BondOrientationalOrderParameter and Van-Hove functions have not been included yet
+    #read output files from LiquidLib
+    #argument
+    #   filename: str
+    #   target_k_index: int
+    #   target_k: float
+    #return
+    #   if quantity in ["gr", "sk", "r2t", "mr2t", "alpha_2", "chi_4", "eacf"]
+    #      x: np.array(float) (1D)
+    #      y: np.array(float) (1D)
+    #   if quantity in ["fskt", "fkt"]
+    #      if target_k > 0 (fitting is involved)
+    #           t:    np.array(float) (1D)
+    #           f_kt: np.array(float) (1D)
+    #      if target_k_index > -1
+    #           k:    float
+    #           t:    np.array(float) (1D)
+    #           f_kt: np.array(float) (1D)
+    #      otherwise
+    #           k:    np.array(float) (1D)
+    #           t:    np.array(float) (1D)
+    #           f_kt: np.array(float) (2D)
+    #   quantity: str
+    quantity = ""
     with open(filename,"r") as fin:
         aline1 = fin.readline()
-        
-        if quantity == "":
-            if "Self intermediate scattering function" in aline1:
-                quantity="fskt"
-            elif "Collective intermediate scattering function" in aline1:
-                quantity="fkt"
-            
+        if "Self intermediate scattering function" in aline1:         quantity="fskt"
+        elif "Collective intermediate scattering function" in aline1: quantity="fkt"
         aline2 = fin.readline()
-        
         if quantity == "":
-            if "S(k)" in aline2:
-                quantity = "sk"
-            elif "g(r)" in aline2:
-                quantity = "gr"
+            if "S(k)" in aline2:        quantity = "sk"
+            elif "g(r)" in aline2:      quantity = "gr"
             elif "r2(t)" in aline2:
-                if "Mutual" in aline1:
-                    quantity = "mr2t"
-                else:
-                    quantity = "r2t"
-            elif "alpha_2" in aline2:
-                quantity = "alpha_2"
-            elif "chi_4" in aline2:
-                quantity = "chi_4"
-            elif "C_jj" in aline2:
-                quantity = "eacf"
-        
-        if quantity == "gr" \
-        or quantity == "sk" \
-        or quantity == "r2t" \
-        or quantity == "mr2t" \
-        or quantity == "alpha_2" \
-        or quantity == "chi_4"\
-        or quantity == "eacf":
-            x_ = []
-            y_ = []
+                if "Mutual" in aline1:  quantity += "mr2t"
+                else:                   quantity = "r2t"
+            elif "alpha_2" in aline2:   quantity = "alpha_2"
+            elif "chi_4" in aline2:     quantity = "chi_4"
+            elif "C_jj" in aline2:      quantity = "eacf"
+        if quantity in ["gr", "sk", "r2t", "mr2t", "alpha_2", "chi_4", "eacf"]:
+            x = []
+            y = []
             for aline in fin:
                 if "#" not in aline:
                     linelist = aline.strip().split()
-                    x_.append(float(linelist[0]))
-                    y_.append(float(linelist[1]))
-            
-            return np.array(x_), np.array(y_), quantity
-        elif quantity == "fskt" \
-          or quantity == "fkt":
-            k_ = []
-            t_ = []
-            f_ = []
+                    x.append(float(linelist[0]))
+                    y.append(float(linelist[1]))
+            x = np.array(x)
+            y = np.array(y)
+            return x, y, quantity
+        elif quantity in ["fskt", "fkt"]:
+            k = []
+            t = []
+            f_tk = []
             aline = fin.readline()
             while "#" not in aline:
-                k_.append(float(aline.strip()))
+                k.append(float(aline.strip()))
                 aline = fin.readline()
             for aline in fin:
                 linelist = aline.strip().split()
-                t_.append(float(linelist[0]))
-                f_.append(np.array([float(i) for i in linelist[1:]]))
-            
-            k_ = np.array(k_)
-            t_ = np.array(t_)
-            f_tk = np.array(f_)
+                t.append(float(linelist[0]))
+                f_tk.append(np.array([float(i) for i in linelist[1:]]))
+            k = np.array(k)
+            t = np.array(t)
+            f_tk = np.array(f_tk)
             f_kt = f_tk.transpose()
             if target_k > 0 and target_k_index > -1:
                 print("Error: Both target_k and target_k_index specified.")
                 exit()
             elif target_k > 0:
+                #use leastsq to fit f_tk along k assuming gaussian shape
+                from scipy.optimize import leastsq
                 f_kt_fitk = []
                 gaussian = lambda p, x: p[0]*np.exp(-p[1]*(x**2))
                 error_gaussian  = lambda p, x, y : y - gaussian(p, x)
                 fit_coeff = []
                 for a_f_tk in f_tk:
                     init  = [1, 0.001]
-                    coeff = leastsq(error_gaussian, init, args=(k_, a_f_tk))[0]
+                    coeff = leastsq(error_gaussian, init, args=(k, a_f_tk))[0]
                     f_kt_fitk.append(gaussian(coeff[:],target_k))
-                return t_, np.array(f_kt_fitk), quantity                
+                return t, np.array(f_kt_fitk), quantity                
             elif target_k_index > -1:
-                return k_[target_k_index], t_, f_kt[target_k_index], quantity
+                return k[target_k_index], t, f_kt[target_k_index], quantity
             else:
-                return k_, t_, f_kt, quantity
+                return k, t, f_kt, quantity
+        else:
+            print("Error: quantity not recognize.")
+            exit()
 
 
 def write(quantity,input_filename,trajectory_file_path,output_file_path,\
@@ -234,18 +240,21 @@ def write(quantity,input_filename,trajectory_file_path,output_file_path,\
           input_box_length=None,k_start_value=0,k_end_value=5,k_interval=0.01,\
           include_intramolecular=None,number_of_bins=400,max_cutoff_length=10,\
           overlap_length=1):
-    quantity_function_ = {"sk" :"StructureFactor",\
-                          "gr" :"PairDistributionFunction",\
-                          "fskt":"SelfIntermediateScatteringFunction",\
-                          "fkt":"CollectiveIntermediateScatteringFunction",\
-                          "r2t":"MeanSquaredDisplacement",\
-                          "mr2t":"MutualMeanSquaredDisplacement",\
-                          "msd":"MeanSquaredDsiplacement",\
-                          "chi4":"FourPointCorrelationFunction",\
-                          "eacf":"ElectricCurrentAutocorrelationFunction"}
-    quantity_function = quantity_function_[quantity]
-
+    #argument
+    #   the same as LiquidLib input
+    #   note: atom_name, mass, charge, atomic_form_factor, and scattering_length are all str, not list
+    quantity_function_map = {"sk" :"StructureFactor",\
+                             "gr" :"PairDistributionFunction",\
+                             "fskt":"SelfIntermediateScatteringFunction",\
+                             "fkt":"CollectiveIntermediateScatteringFunction",\
+                             "r2t":"MeanSquaredDisplacement",\
+                             "mr2t":"MutualMeanSquaredDisplacement",\
+                             "msd":"MeanSquaredDsiplacement",\
+                             "chi4":"FourPointCorrelationFunction",\
+                             "eacf":"ElectricCurrentAutocorrelationFunction"}
+    quantity_function = quantity_function_map[quantity]
     with open(input_filename,"w",newline='\n') as fout:
+        #general information
         fout.write('''-function=%s
 -calculation_type=%s
 -trajectory_file_path=%s'''%(quantity_function,calculation_type,trajectory_file_path))
@@ -266,7 +275,7 @@ def write(quantity,input_filename,trajectory_file_path,output_file_path,\
         if quantity in ['sk','fskt','fkt'] and weighting_type:
             fout.write('''
 -weighting_type=%s'''%(weighting_type))
-        ################################# Time correlation
+        #time correlation
         if quantity in ['msd','r2t','mr2t','fskt','fkt','chi4','eacf']:
             fout.write('''
 -time_scale_type=%s
@@ -274,8 +283,7 @@ def write(quantity,input_filename,trajectory_file_path,output_file_path,\
 -time_interval=%s
 -number_of_time_points=%s
 #-time_array_indices='''%(time_scale_type,trajectory_delta_time,time_interval,number_of_time_points))
-        ################################# Time correlation
-        ################################# First atom group
+        #first atom group
         if atom_name_1:
             fout.write('''
 -atom_name_1=%s'''%(atom_name_1))
@@ -295,8 +303,7 @@ def write(quantity,input_filename,trajectory_file_path,output_file_path,\
         if charge_1:
             fout.write('''
 -charge_1=%s'''%(charge_1))
-        ################################# First atom group
-        ################################# Second atom group
+        #second atom group
         if atom_name_2:
             fout.write('''
 -atom_name_2=%s'''%(atom_name_2))
@@ -316,7 +323,7 @@ def write(quantity,input_filename,trajectory_file_path,output_file_path,\
         if charge_2:
             fout.write('''
 -charge_2=%s'''%(charge_2))
-        ################################# Second atom group
+        #additional information
         if quantity in ['sk','fskt','fkt']:
             fout.write('''
 -k_start_value=%s
@@ -328,10 +335,8 @@ def write(quantity,input_filename,trajectory_file_path,output_file_path,\
 -input_box_length=%s'''%(input_box_length))
         if quantity in ['gr']:
             if include_intramolecular == None:
-                if molecule_file_path:
-                    include_intramolecular = True
-                else:
-                    include_intramolecular = False
+                if molecule_file_path: include_intramolecular = True
+                else: include_intramolecular = False
             fout.write('''
 -include_intramolecular=%s'''%(include_intramolecular))
             fout.write('''
