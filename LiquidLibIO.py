@@ -1,5 +1,4 @@
 import numpy as np
-import ReadMD as RM
 
 def smooth(x, y, n_points = 1000, sg_filter = True, sg_window = 101):
     #use CubicSpline and savgol_filter to smooth a function when the data points are too scarce
