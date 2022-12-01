@@ -96,21 +96,24 @@ def compute_normalized_cross_term_structure_factor(sk_n, sk_n1, sk_n2, pref_n, p
     sk_norm_cross = 0.5*(compute_absolute_cross_term_structure_factor(sk_n, sk_n1, sk_n2, pref_n, pref_n1, pref_n2))/(pref_n1*pref_n2)**0.5
     return sk_norm_cross
 
-def make_mol_file(filename, output_filename, molecule_name = [], n_atom_in_molecule = [], n_type_in_molecule = []):
+def make_mol_file(atom_type, output_filename, molecule_name, n_atom_in_molecule, atom_type_of_first_atom_in_molecule):
     #create molecule_file for "molecule_file_path" in LiquidLib
-    
-    data = RM.LAMMPS_ITR(filename)
-    mol_atom_start_type_list_ = []
-    type_index = 1
-    for a_num_type in n_type_in_molecule:
-        mol_atom_start_type_list_.append(type_index)
-        type_index += a_num_type
+    #argument
+    #   atom_type: list[int] or list[str], atom type
+    #   output_filename: str
+    #   molecule_name: list[str], list of molecule names
+    #   n_atom_in_molecule: list[int], list of number of atoms in each molecule
+    #   atom_type_of_first_atom_in_molecule: list[int], list of atom type (in atom_type) of the first atom in each molecule
+    #                                        we always assume the all the atoms in each molecule are listed consecutively in atom_type
+    #                                        and the atoms for each molecule are sorted the same way; e.g. OHHOHHOHH... for N water molecules
+    #return
+    #   None
     with open(output_filename,"w") as fout:
-        fout.write("#\n%d\n"%(data.coord.shape[0]))
+        fout.write("#\n%d\n"%(len(atom_type)))
         molecule_id = 0
         i = 0
-        while i < len(data.type):
-            j = mol_atom_start_type_list_.index(data.type[i])
+        while i < len(atom_type):
+            j = atom_type_of_first_atom_in_molecule.index(atom_type[i])
             molecule_id+=1
             for k in range(n_atom_in_molecule[j]):
                 fout.write("%d %s\n"%(molecule_id,molecule_name[j]))
