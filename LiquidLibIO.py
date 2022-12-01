@@ -7,8 +7,8 @@ def smooth(x, y, n_points = 1000, sg_filter = True, sg_window = 101):
     #   y:         np.array(float) (1D)
     #   sg_window: int
     #return
-    #   x:         np.array(float) (1D)
-    #  sg:         np.array(float) (1D)
+    #   x_smth:         np.array(float) (1D)
+    #   y_smth:         np.array(float) (1D)
     from scipy.interpolate import CubicSpline
     from scipy.signal import savgol_filter
     x_smth = np.linspace(x.min(), x.max(), n_points)
