@@ -1,63 +1,104 @@
 import numpy as np
-from scipy.interpolate import CubicSpline
-from scipy.signal import savgol_filter
 from scipy.optimize import leastsq
-from ScatteringLengthTable import scattering_length_table
-from AtomicFormFactorTable import atomic_form_factor_table
 import ReadMD as RM
 
-def smooth(x,y,n_points=1000,sg_filter=True,sg_window=101):
-    xx = np.linspace(x.min(),x.max(),n_points)
+def smooth(x, y, n_points = 1000, sg_filter = True, sg_window = 101):
+    #use CubicSpline and savgol_filter to smooth a function when the data points are too scarce
+    #argument
+    #   x:         np.array(float) (1D) 
+    #   y:         np.array(float) (1D)
+    #   sg_window: int
+    #return
+    #   x:         np.array(float) (1D)
+    #  sg:         np.array(float) (1D)
+    from scipy.interpolate import CubicSpline
+    from scipy.signal import savgol_filter
+    x_smth = np.linspace(x.min(), x.max(), n_points)
     cs = CubicSpline(x, y)
-    if sg_filter:
-        sg = savgol_filter(cs(xx), sg_window, 3)
-        return xx,sg
-    else:
-        return xx,cs(xx)
+    y_smth = cs(x_smth)
+    if sg_filter: y_smth = savgol_filter(y_smth, sg_window, 3)
+    return x_smth, y_smth
         
-def sg_smooth(x,y,sg_window=11):
-    return x,savgol_filter(y, sg_window, 3)
+def sg_smooth(x, y, sg_window=11):
+    #use avgol_filter to smooth a function when the data points are too dense and noisey
+    #argument
+    #   x:         np.array(float) (1D) 
+    #   y:         np.array(float) (1D)
+    #   sg_window: int
+    #return
+    #   x:         np.array(float) (1D)
+    #  sg:         np.array(float) (1D)
+    from scipy.signal import savgol_filter
+    sg = savgol_filter(y, sg_window, 3)
+    return x, sg
 
-def sk_abs_prefactor(atom_weighting_name_,atom_num_,volume,weighting_type="neutron",k_values_=[]):
-    #scattering length [fm]
-    #volume [angstrom^3]
-    #return [cm^-1]
-    N = sum(atom_num_)
-    if weighting_type == "neutron":
+def compute_sk_abs_prefactor(atom_name, atom_num, volume, weighting_type = "neutron", k_values=[]):
+    #argument
+    #   atom_name:      list[str], nemas of the atoms 
+    #                   see ScatteringLengthTable.scattering_length_table and AtomicFormFactorTable.atomic_form_factor_table 
+    #                   for available names.
+    #   atom_num:       list[int], number of the atoms
+    #   volume:         float, volume of the simulation box
+    #   weighting_type: 'neutron' or 'xray'
+    #   k_values:       np.array(float), only specify k_values when weighting_type = 'xray'
+    #return
+    #   prefactor:      float           if weighting_type = 'neutron' 
+    #                   np.array(float) if weighting_type = 'xray'
+
+    #mutiply normalized sk with prefactor to get absolute sk
+    #unit of scattering lengths: fm
+    #unit of volume:             angstrom^3
+    #unit of prefactor:          cm^-1
+    from ScatteringLengthTable import scattering_length_table
+    from AtomicFormFactorTable import atomic_form_factor_table
+    unit_prefactor = 1e-2 # cm^-1 = 1.0 (fm^2) * 1e-30 (m^2/fm^2) * 1e+30 (A^3/m^3) * 1e-2 m/cm
+    N = sum(atom_num)
+    if weighting_type == 'neutron':
         sum_scattering_length_square = 0.0
-        for i_particle in range(len(atom_weighting_name_)):
-            sum_scattering_length_square += scattering_length_table[atom_weighting_name_[i_particle]]*atom_num_[i_particle]
+        for i_particle in range(len(atom_name)):
+            sum_scattering_length_square += scattering_length_table[atom_name[i_particle]]*atom_num[i_particle]
         sum_scattering_length_square *= sum_scattering_length_square
-        prefactor = sum_scattering_length_square/N/volume * 1e-26 * 1e24
-        return prefactor
+        prefactor = sum_scattering_length_square/N/volume * unit_prefactor
     elif weighting_type == 'xray':
-        k_values_ = np.array(k_values_)
-        atomic_form_factor_ = np.zeros((len(atom_num_),len(k_values_)))
+        k_values = np.array(k_values)
+        atomic_form_factor_ = np.zeros((len(atom_num),len(k_values)))
         sum_atomic_form_factor_square = 0.0
-        for i_particle in range(len(atom_weighting_name_)):
-            for i_coefficient in range(0,len(atomic_form_factor_table[atom_weighting_name_[i_particle]])-1,2):
-                atomic_form_factor_[i_particle] += atomic_form_factor_table[atom_weighting_name_[i_particle]][i_coefficient] * np.exp(-atomic_form_factor_table[atom_weighting_name_[i_particle]][i_coefficient+1]*((k_values_/4.0/np.pi)**2))
-            atomic_form_factor_[i_particle] += atomic_form_factor_table[atom_weighting_name_[i_particle]][len(atomic_form_factor_table[atom_weighting_name_[i_particle]])-1]
-            sum_atomic_form_factor_square += atomic_form_factor_[i_particle]*atom_num_[i_particle]
+        for i_particle in range(len(atom_name)):
+            for i_coefficient in range(0,len(atomic_form_factor_table[atom_name[i_particle]])-1,2):
+                atomic_form_factor_[i_particle] += atomic_form_factor_table[atom_name[i_particle]][i_coefficient] * np.exp(-atomic_form_factor_table[atom_name[i_particle]][i_coefficient+1]*((k_values/4.0/np.pi)**2))
+            atomic_form_factor_[i_particle] += atomic_form_factor_table[atom_name[i_particle]][len(atomic_form_factor_table[atom_name[i_particle]])-1]
+            sum_atomic_form_factor_square += atomic_form_factor_[i_particle]*atom_num[i_particle]
         sum_atomic_form_factor_square *= sum_atomic_form_factor_square
-        sum_atomic_form_factor_square /= k_values_.shape[0]**2
-        prefactor = sum_atomic_form_factor_square/N/volume * 1e-26 * 1e24
-        return prefactor
+        sum_atomic_form_factor_square /= k_values.shape[0]**2
+        prefactor = sum_atomic_form_factor_square/N/volume * unit_prefactor
     else:
-        sum_atom_num_square = 0.0
-        for i_particle in range(len(atom_weighting_name_)):
-            sum_atom_num_square += atom_num_[i_particle]
-        sum_atom_num_square *= sum_atom_num_square
-        prefactor = sum_atom_num_square/N/volume * 1e-26 * 1e24
-        return prefactor
+        prefactor = N/volume * unit_prefactor
+    return prefactor
 
-def compute_absolute_cross_term_structure_factor(sk_n,sk_n1,sk_n2,pref_n,pref_n1,pref_n2):
-    return sk_n*pref_n - sk_n1*pref_n1 - sk_n2*pref_n2 
+def compute_absolute_cross_term_structure_factor(sk_n, sk_n1, sk_n2, pref_n, pref_n1, pref_n2):
+    #argument
+    #   sk_n:    np.array(float) (1D), normalized sk of n1+n2
+    #   sk_n1:   np.array(float) (1D), normalized sk of n1
+    #   sk_n2:   np.array(float) (1D), normalized sk of n2
+    #   pref_n:  float or np.array(float) (1D), absolute prefactor of n1+n2
+    #   pref_n1: float or np.array(float) (1D), absolute prefactor of n1
+    #   pref_n2: float or np.array(float) (1D), absolute prefactor of n2
+    #return
+    #   sk_abs_cross: np.array(float), absolute sk of n1xn2
+    sk_abs_cross = sk_n*pref_n - sk_n1*pref_n1 - sk_n2*pref_n2 
+    return sk_abs_cross
 
-def compute_normalized_cross_term_structure_factor(sk_n,sk_n1,sk_n2,pref_n,pref_n1,pref_n2):
-    return 0.5*(compute_absolute_cross_term_structure_factor(sk_n,sk_n1,sk_n2,pref_n,pref_n1,pref_n2))/(pref_n1*pref_n2)**0.5
+def compute_normalized_cross_term_structure_factor(sk_n, sk_n1, sk_n2, pref_n, pref_n1, pref_n2):
+    #argument
+    #   same as compute_absolute_cross_term_structure_factor
+    #return
+    #   sk_norm_cross: np.array(float), absolute sk of n1xn2
+    sk_norm_cross = 0.5*(compute_absolute_cross_term_structure_factor(sk_n, sk_n1, sk_n2, pref_n, pref_n1, pref_n2))/(pref_n1*pref_n2)**0.5
+    return sk_norm_cross
 
 def make_mol_file(filename, output_filename, molecule_name = [], n_atom_in_molecule = [], n_type_in_molecule = []):
+    #create molecule_file for "molecule_file_path" in LiquidLib
+    
     data = RM.LAMMPS_ITR(filename)
     mol_atom_start_type_list_ = []
     type_index = 1
