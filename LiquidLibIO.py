@@ -96,27 +96,50 @@ def compute_normalized_cross_term_structure_factor(sk_n, sk_n1, sk_n2, pref_n, p
     sk_norm_cross = 0.5*(compute_absolute_cross_term_structure_factor(sk_n, sk_n1, sk_n2, pref_n, pref_n1, pref_n2))/(pref_n1*pref_n2)**0.5
     return sk_norm_cross
 
-def make_mol_file(atom_type, output_filename, molecule_name, n_atom_in_molecule, atom_type_of_first_atom_in_molecule):
+def make_molecule_file(output_filename, atom_type, molecule_name, n_atom_in_molecule, atom_type_of_first_atom_in_molecule):
     #create molecule_file for "molecule_file_path" in LiquidLib
     #argument
-    #   atom_type: list[int] or list[str], atom type
     #   output_filename: str
+    #   atom_type: list[int] or list[str], atom type
     #   molecule_name: list[str], list of molecule names
     #   n_atom_in_molecule: list[int], list of number of atoms in each molecule
     #   atom_type_of_first_atom_in_molecule: list[int], list of atom type (in atom_type) of the first atom in each molecule
     #                                        we always assume the all the atoms in each molecule are listed consecutively in atom_type
-    #                                        and the atoms for each molecule are sorted the same way; e.g. OHHOHHOHH... for N water molecules
+    #                                        and the atoms for each molecule are sorted the same way, the same element in different molecules are named differtly.
     #return
     #   None
+    #example for 3 water molecules and 2 oxygen molecules: O of water = 1, H of water = 2, O of oxygen = 3
+    #atom_type                           = [1,2,2,1,2,2,3,3,1,2,2,3,3]
+    #molecule_name                       = ['water','oxygen']
+    #n_atom_in_molecule                  = [3, 2]
+    #atom_type_of_first_atom_in_molecule = [1, 3]
+    #output file:
+    '''
+    #
+    13
+    1 water
+    1 water
+    1 water
+    2 water
+    2 water
+    2 water
+    3 oxygen
+    3 oxygen
+    4 water
+    4 water
+    4 water
+    5 oxygen
+    5 oxygen
+    '''
     with open(output_filename,"w") as fout:
         fout.write("#\n%d\n"%(len(atom_type)))
         molecule_id = 0
         i = 0
         while i < len(atom_type):
             j = atom_type_of_first_atom_in_molecule.index(atom_type[i])
-            molecule_id+=1
+            molecule_id += 1
             for k in range(n_atom_in_molecule[j]):
-                fout.write("%d %s\n"%(molecule_id,molecule_name[j]))
+                fout.write("%d %s\n"%(molecule_id, molecule_name[j]))
             i += n_atom_in_molecule[j]
 
 def read(filename,quantity="",target_k=0,target_k_index=-1):
