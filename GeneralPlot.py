@@ -47,9 +47,10 @@ def gradient_image(ax, extent=(0, 1, 0, 1), direction=0, cmap_range=(0, 1), **kw
     im = ax.imshow(X, extent=extent, interpolation='bicubic', vmin=0, vmax=1, **kwargs)
     return im
 
-def get_color_series(color_,cmap):
+def get_color_series(color_, cmap, vmax = None):
+        vmax = max(color_) if vmax is None else vmax
         color_tmp = []
-        cNorm  = mpl.colors.Normalize(vmin=0, vmax=len(color_))
+        cNorm  = mpl.colors.Normalize(vmin=0, vmax=vmax)
         scalarMap = mpl.cm.ScalarMappable(norm=cNorm, cmap=plt.get_cmap(cmap))
         for i in color_:
             color_tmp.append(scalarMap.to_rgba(i))  
