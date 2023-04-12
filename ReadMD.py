@@ -491,11 +491,10 @@ class VASP_DATA:
             self.coord[j][1] = float(linelist[1])
             self.coord[j][2] = float(linelist[2])
 
-    def write_data(self,filename=""):
-        with open(output_filename,"w") as fout:
+    def write_data(self,filename):
+        with open(filename,"w") as fout:
             fout.write(self.headline)
-            fout.write("\n")
-            fout.write(self.cellscale)
+            fout.write("%s"%(self.cellscale))
             fout.write("\n")
             for j in range(3):
                 for i in range(3):
@@ -510,8 +509,7 @@ class VASP_DATA:
             fout.write(self.coord_type)
             fout.write("\n")
             for j in range(self.atoms):
-                fout.write("%s %f %f %f"%(self.type[j],self.coord[j][0],self.coord[j][1],self.coord[j][2]))
-
+                fout.write("%f %f %f\n"%(self.coord[j][0],self.coord[j][1],self.coord[j][2]))
            
 class VASP_ITR:
     def __init__(self, filename, number_of_frames=False):
