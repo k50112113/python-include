@@ -91,45 +91,81 @@ class MoleculeTopology:
                 self.coord[i][2] = float(linelist[-4])
 
     def output_lt_file(self,outputfilename="tmp.lt",name="TMP"):
-        print(self.n_angle_types,self.angle_type_list_)
-        print(self.n_dihedral_types,self.dihedral_type_list_)
+        print(self.n_bond_types)
+        for a_bond_type in self.bond_type_list_:
+            for a_type in a_bond_type:
+                print(a_type, end='\t')
+            print("")
+        print(self.n_angle_types)
+        for a_angle_type in self.angle_type_list_:
+            for a_type in a_angle_type:
+                print(a_type, end='\t')
+            print("")
+        print(self.n_dihedral_types)
+        for a_dihedral_type in self.dihedral_type_list_:
+            for a_type in a_dihedral_type:
+                print(a_type, end='\t')
+            print("")
         fout = open(outputfilename,'w')
         fout.write("%s{\n"%(name))
 
         fout.write("""  write("Data Atoms") { \n""")
         for index in range(self.n_atoms):
             fout.write("""    $atom:%s  $mol:. @atom:%s   %s  %s  %s  %s   # %s\n"""%(\
-            index+1,self.type_list_.index(self.type_[index])+1,\
-            0.0,self.coord[index][0],self.coord[index][1],self.coord[index][2],self.type_[index]))
+            str(index+1).ljust(4),\
+            str(self.type_list_.index(self.type_[index])+1).ljust(4),\
+            0.0,\
+            str(self.coord[index][0]).ljust(8),\
+            str(self.coord[index][1]).ljust(8),\
+            str(self.coord[index][2]).ljust(8),\
+            str(self.type_[index]).ljust(3)))
         fout.write("  }\n")
         fout.write("""  write_once("Data Masses") { \n""")
         for index in range(self.n_types):
-            fout.write("""    @atom:%s %s # %s\n"""%(index+1,self.mass_list_[index],self.type_list_[index]))
+            fout.write("""    @atom:%s %s # %s\n"""%(\
+            str(index+1).ljust(4),\
+            str(self.mass_list_[index]).ljust(8),\
+            str(self.type_list_[index]).ljust(3)))
         fout.write("  }\n")
         fout.write("""  write("Data Bonds") { \n""")
         for index in range(len(self.bond_list_)):
             type_chain = [self.type_[k] for k in self.bond_list_[index]]
             fout.write("""    $bond:%s  @bond:%s $atom:%s  $atom:%s    # %s %s\n"""%(\
-            index+1,self.bond_type_dict[self.chain_to_key(type_chain)],\
-            self.bond_list_[index][0]+1,self.bond_list_[index][1]+1,\
-            type_chain[0],type_chain[1]))
+            str(index+1).ljust(4),\
+            str(self.bond_type_dict[self.chain_to_key(type_chain)]).ljust(4),\
+            str(self.bond_list_[index][0]+1).ljust(4),\
+            str(self.bond_list_[index][1]+1).ljust(4),\
+            str(type_chain[0]).ljust(4),\
+            str(type_chain[1]).ljust(4)))
 
         fout.write("  }\n")
         fout.write("""  write("Data Angles") { \n""")
         for index in range(len(self.angle_list_)):
             type_chain = [self.type_[k] for k in self.angle_list_[index]]
             fout.write("""    $angle:%s  @angle:%s $atom:%s  $atom:%s  $atom:%s  # %s %s %s\n"""%(\
-            index+1,self.angle_type_dict[self.chain_to_key(type_chain)],\
-            self.angle_list_[index][0]+1,self.angle_list_[index][1]+1,self.angle_list_[index][2]+1,\
-            type_chain[0],type_chain[1],type_chain[2]))
+            str(index+1).ljust(4),\
+            str(self.angle_type_dict[self.chain_to_key(type_chain)]).ljust(4),\
+            str(self.angle_list_[index][0]+1).ljust(4),\
+            str(self.angle_list_[index][1]+1).ljust(4),\
+            str(self.angle_list_[index][2]+1).ljust(4),\
+            str(type_chain[0]).ljust(4),\
+            str(type_chain[1]).ljust(4),\
+            str(type_chain[2]).ljust(4)))
         fout.write("  }\n")
         fout.write("""  write("Data Dihedrals") { \n""")
         for index in range(len(self.dihedral_list_)):
             type_chain = [self.type_[k] for k in self.dihedral_list_[index]]
             fout.write("""    $dihedral:%s  @dihedral:%s    $atom:%s    $atom:%s   $atom:%s  $atom:%s  # %s %s %s %s\n"""%(\
-            index+1,self.dihedral_type_dict[self.chain_to_key(type_chain)],\
-            self.dihedral_list_[index][0]+1,self.dihedral_list_[index][1]+1,self.dihedral_list_[index][2]+1,self.dihedral_list_[index][3]+1,\
-            type_chain[0],type_chain[1],type_chain[2],type_chain[3]))
+            str(index+1).ljust(4),\
+            str(self.dihedral_type_dict[self.chain_to_key(type_chain)]).ljust(4),\
+            str(self.dihedral_list_[index][0]+1).ljust(4),\
+            str(self.dihedral_list_[index][1]+1).ljust(4),\
+            str(self.dihedral_list_[index][2]+1).ljust(4),\
+            str(self.dihedral_list_[index][3]+1).ljust(4),\
+            str(type_chain[0]).ljust(4),\
+            str(type_chain[1]).ljust(4),\
+            str(type_chain[2]).ljust(4),\
+            str(type_chain[3]).ljust(4)))
         fout.write("  }\n")
         fout.write("}\n")
         fout.close()
