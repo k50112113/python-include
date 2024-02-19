@@ -383,7 +383,7 @@ class Autoencoder:
                 Xp = self.ae_model.decode(cv)
                 if torch.is_tensor(Xp_stack):   Xp_stack = torch.vstack((Xp_stack,Xp))
                 else:                           Xp_stack = torch.clone(Xp)
-            Xp_stack = Xp_stack.detach().numpy()
+            Xp_stack = Xp_stack.cpu().detach().numpy()
             if output_filename != "":
                 fout = open(output_filename,"w")
                 for a_Xp_sample in Xp_stack:
