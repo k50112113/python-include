@@ -359,7 +359,7 @@ class Autoencoder:
                 cv = self.ae_model.encode(X)
                 if torch.is_tensor(cv_stack):   cv_stack = torch.vstack((cv_stack,cv))
                 else:                           cv_stack = torch.clone(cv)
-            cv_stack = cv_stack.detach().numpy()    
+            cv_stack = cv_stack.detach().cpu().numpy()    
             if output_filename != "":
                 fout = open(output_filename,"w")
                 for a_cv_sample in cv_stack:
@@ -383,7 +383,7 @@ class Autoencoder:
                 Xp = self.ae_model.decode(cv)
                 if torch.is_tensor(Xp_stack):   Xp_stack = torch.vstack((Xp_stack,Xp))
                 else:                           Xp_stack = torch.clone(Xp)
-            Xp_stack = Xp_stack.detach().numpy()
+            Xp_stack = Xp_stack.cpu().detach().numpy()
             if output_filename != "":
                 fout = open(output_filename,"w")
                 for a_Xp_sample in Xp_stack:
@@ -864,7 +864,7 @@ class HierarchicalAutoencoder(Autoencoder):
                 Xp = self.ae_model.decode(cv)
                 if torch.is_tensor(Xp_stack):   Xp_stack = torch.vstack((Xp_stack,Xp))
                 else:                           Xp_stack = torch.clone(Xp)
-            Xp_stack = Xp_stack.detach().numpy()
+            Xp_stack = Xp_stack.detach().cpu().numpy()
             #torch.transpose(Xp_stack,0,1)
             if output_filename != "":
                 fout = open(output_filename,"w")

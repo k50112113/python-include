@@ -215,7 +215,8 @@ def plot(CV,colorcode=None,vmin=-1,vmax=-1,cmap=None,\
             iso_val=np.log(mid)
             
             from skimage import measure
-            verts, faces, norm, val = measure.marching_cubes_lewiner(volume = colorcode, level= iso_val, spacing=(spacing, spacing, spacing))
+            # verts, faces, norm, val = measure.marching_cubes_lewiner(volume = colorcode, level= iso_val, spacing=(spacing, spacing, spacing)) #deprecated
+            verts, faces, norm, val = measure.marching_cubes(volume = colorcode, level= iso_val, spacing=(spacing, spacing, spacing))
             surf = ax.plot_trisurf(verts[:, 0]-1, verts[:,1]-1, faces, verts[:, 2]-1,color='k', lw=0,alpha=0.2)
             
             if filename != "":
