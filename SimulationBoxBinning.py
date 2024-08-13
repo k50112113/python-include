@@ -1,5 +1,10 @@
 import numpy as np
-from LocalFrameTransform import minimum_image, wrap
+
+def minimum_image(r, lbox):
+    return r - lbox*np.round(r / lbox)
+
+def wrap(r, lbox):
+    return r%lbox
 
 class SimulationBoxBinning:
     def __init__(self, lbox, nbin, coord=[]):
