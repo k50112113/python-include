@@ -128,7 +128,7 @@ class LAMMPS_DATA:
         
         self.lattice_vector = np.array([[self.lhi[0]-self.llo[0], self.tilt_factors[0]   , self.tilt_factors[1]   ],\
                                         [0                      , self.lhi[1]-self.llo[1], self.tilt_factors[2]   ],\
-                                        [0                      , 0                      , self.lhi[2]-self.llo[2]]])
+                                        [0                      , 0                      , self.lhi[2]-self.llo[2]]]).T
         while len(self.other_info) > 0 and self.other_info[0].strip('\n') == "":
             del self.other_info[0]
     
@@ -166,6 +166,8 @@ class LAMMPS_DATA:
      self.dihedrals,self.dihedral_types,\
      self.impropers,self.improper_types,\
      self.llo[0],self.lhi[0],self.llo[1],self.lhi[1],self.llo[2],self.lhi[2]))
+            if not all(self.tilt_factors == 0):
+                fout.write('''%f %f %f xy xz yz\n'''%(self.tilt_factors[0], self.tilt_factors[1], self.tilt_factors[2]))
             fout.write('''
 Masses
 
