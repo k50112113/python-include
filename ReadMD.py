@@ -271,6 +271,8 @@ class LAMMPS_ITR:
             self.coord_index = linelist.index("xu") - 2
         elif "x" in linelist:
             self.coord_index = linelist.index("x") - 2
+        elif "xs" in linelist:
+            self.coord_index = linelist.index("xs") - 2
         elif "vx" in linelist:
             self.coord_index = linelist.index("vx") - 2
         for akey in self.additionalkey:
