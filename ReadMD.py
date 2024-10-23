@@ -278,7 +278,7 @@ class LAMMPS_ITR:
 
         self.coord = np.zeros((self.natom,3))
         self.additionalkey_value = [[0 for j in range(self.natom)] for i in self.additionalkey]
-        self.type = np.zeros(self.natom).astype(np.int)
+        self.type = np.zeros(self.natom).astype(np.int32)
         self.element = ["" for i in range(self.natom)]
         for i in range(self.natom):
             linelist = self.fin.readline().strip().split()
