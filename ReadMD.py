@@ -257,12 +257,15 @@ class LAMMPS_ITR:
                                         [0                      , 0                      , self.lhi[2]-self.llo[2]]])
         
         linelist = self.fin.readline().strip().split()
+        self.id_index = None
         self.type_index = None
         self.element_index = None
         self.coord_index = None
         self.key_index = []
         self.additionalkey = additionalkey
 
+        if "id" in linelist:
+            self.id_index = linelist.index("id") - 2
         if "type" in linelist:
             self.type_index = linelist.index("type") - 2
         if "element" in linelist:
@@ -275,6 +278,7 @@ class LAMMPS_ITR:
             self.coord_index = linelist.index("xs") - 2
         elif "vx" in linelist:
             self.coord_index = linelist.index("vx") - 2
+
         for akey in self.additionalkey:
             self.key_index.append(linelist.index(akey) - 2)
 
@@ -284,16 +288,20 @@ class LAMMPS_ITR:
         self.element = ["" for i in range(self.natom)]
         for i in range(self.natom):
             linelist = self.fin.readline().strip().split()
-            if self.coord_index:
-                self.coord[i][0] = float(linelist[self.coord_index])
-                self.coord[i][1] = float(linelist[self.coord_index+1])
-                self.coord[i][2] = float(linelist[self.coord_index+2])
-            if self.type_index:
-                self.type[i] = int(linelist[self.type_index])
-            if self.element_index:
-                self.element[i] = linelist[self.element_index]
+            if self.id_index is not None:
+                id = int(linelist[self.id_index]) - 1
+            else:
+                id = i
+            if self.coord_index is not None:
+                self.coord[id][0] = float(linelist[self.coord_index])
+                self.coord[id][1] = float(linelist[self.coord_index+1])
+                self.coord[id][2] = float(linelist[self.coord_index+2])
+            if self.type_index is not None:
+                self.type[id] = int(linelist[self.type_index])
+            if self.element_index is not None:
+                self.element[id] = linelist[self.element_index]
             for ikey in range(len(self.additionalkey)):
-                self.additionalkey_value[ikey][i] = linelist[self.key_index[ikey]]
+                self.additionalkey_value[ikey][id] = linelist[self.key_index[ikey]]
 
     def get_volume(self):
         return np.linalg.det(self.lattice_vector)
@@ -307,19 +315,38 @@ class LAMMPS_ITR:
                     for i in range(self.natom):
                         self.fin.readline()
             self.fin_prestep_pointer = self.fin.tell()
-            for i in range(9):
-                aline = self.fin.readline()
-                if i == 1: self.timestep = int(aline.strip())
+            self.fin.readline()
+            self.timestep = int(self.fin.readline())
+            self.fin.readline()
+            self.natom = int(self.fin.readline())
+
+            self.llo = np.zeros(3)
+            self.lhi = np.zeros(3)
+            self.tilt_factors = np.zeros(3)
+            boxtypeline = self.fin.readline()
+            for k in range(3):
+                linelist = self.fin.readline().strip().split()
+                self.llo[k]          = float(linelist[0])
+                self.lhi[k]          = float(linelist[1])
+                if "xy xz yz" in boxtypeline: self.tilt_factors[k] = float(linelist[2])
+            self.lattice_vector = np.array([[self.lhi[0]-self.llo[0], self.tilt_factors[0]   , self.tilt_factors[1]   ],\
+                                            [0                      , self.lhi[1]-self.llo[1], self.tilt_factors[2]   ],\
+                                            [0                      , 0                      , self.lhi[2]-self.llo[2]]])
+            linelist = self.fin.readline().strip().split()
             self.coord = np.zeros((self.natom,3))
             for i in range(self.natom):
                 aline = self.fin.readline()
                 linelist = aline.strip().split()
-                if self.coord_index:
-                    self.coord[i][0] = float(linelist[self.coord_index])
-                    self.coord[i][1] = float(linelist[self.coord_index+1])
-                    self.coord[i][2] = float(linelist[self.coord_index+2])
+                if self.id_index is not None:
+                    id = int(linelist[self.id_index]) - 1
+                else:
+                    id = i
+                if self.coord_index is not None:
+                    self.coord[id][0] = float(linelist[self.coord_index])
+                    self.coord[id][1] = float(linelist[self.coord_index+1])
+                    self.coord[id][2] = float(linelist[self.coord_index+2])
                 for ikey in range(len(self.additionalkey)):
-                    self.additionalkey_value[ikey][i] = linelist[self.key_index[ikey]]
+                    self.additionalkey_value[ikey][id] = linelist[self.key_index[ikey]]
             return True
         except:
             return False
